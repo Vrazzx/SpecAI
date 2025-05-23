@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Documentation Assistant</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AI Documentation Assistant</h1>
+            <p class="subtitle">Загрузите документацию, и я помогу вам с кодом и ответами на вопросы</p>
+        </header>
+
+        <div class="main-content">
+            <section class="documentation-section">
+                <h2 class="section-title">Документация</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <p class="upload-text">Перетащите файлы сюда или</p>
+                    <button class="btn" id="uploadBtn">Выберите файлы</button>
+                    <input type="file" id="fileInput" multiple>
+                </div>
+                <div id="fileListContainer">
+                    <h3>Загруженные файлы</h3>
+                    <ul class="file-list" id="fileList">
+                        <!-- Файлы будут добавляться здесь -->
+                    </ul>
+                </div>
+            </section>
+
+            <section class="chat-section">
+                <h2 class="section-title">Чат с ассистентом</h2>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message assistant-message">
+                        Привет! Загрузите документацию, и я помогу вам с вопросами по ней.
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <textarea id="userInput" placeholder="Задайте вопрос или попросите помочь с кодом..."></textarea>
+                    <button class="btn" id="sendBtn">Отправить</button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
