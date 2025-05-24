@@ -2,3 +2,16 @@ fastapi==0.95.2
 uvicorn==0.22.0
 httpx==0.24.1
 python-dotenv==1.0.0
+python-dotenv
+langchain
+langchain-huggingface
+langchain-community
+gigachat
+pydantic
+pandas
+python-docx
+PyPDF2
+openpyxl
+python-pptx
+sentence-transformers
+torch
