@@ -5,6 +5,7 @@ import csv
 import os
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Body
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Any
 import uuid
@@ -18,8 +19,45 @@ from gigachat import GigaChat
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.outputs import Generation, LLMResult
 import logging
+from langchain_core.prompts import PromptTemplate
 from io import BytesIO
 
+PROMPT_TEMPLATES = {
+    "document_analysis": """
+    Ты - профессиональный анализатор документаций к IT-продуктам и самого кода. Проанализируй предоставленный текст и выдели ключевые аспекты. Отвечай на русском языке.
+    Документ: {document_text}
+    
+    Анализ должен содержать:
+    1. Основную тему документа
+    2. Ключевые тезисы
+    3. Важные детали
+    4. Рекомендации по использованию информации
+    
+    Анализ:
+    """,
+    
+    "qa_with_context": """
+    Ты - технический ассистент. Отвечай на вопросы, используя только предоставленный контекст.
+    Если ответа нет в контексте, скажи "Не могу найти ответ в документе". Отвечай на русском языке.
+    
+    Контекст:
+    {context}
+    
+    Вопрос: {question}
+    
+    Развернутый ответ:
+    """,
+    
+    "default_chat": """
+    Ты - полезный AI-ассистент. Отвечай на вопросы вежливо и профессионально. Отвечай на русском языке.
+    Текущий диалог:
+    {chat_history}
+    
+    Новый вопрос: {question}
+    
+    Ответ:
+    """
+}
 # Настройка логгирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,9 +70,6 @@ load_dotenv()
 GIGACHAT_CREDENTIALS = os.getenv("GIGACHAT_TOKEN")
 if not GIGACHAT_CREDENTIALS:
     logger.error("GIGACHAT_TOKEN environment variable is not set")
-    # Вместо вызова raise здесь, мы просто выведем сообщение
-    # и позволим приложению запуститься, но запросы к GigaChat будут падать
-    # с понятным сообщением об ошибке
 
 app = FastAPI()
 SUPPORTED_CODE_EXTENSIONS = {
@@ -264,10 +299,15 @@ async def ask_question(request: QuestionRequest):
             
         llm = GigaChatLangChain(credentials=GIGACHAT_CREDENTIALS)
         
+        qa_prompt = PromptTemplate(
+            template=PROMPT_TEMPLATES["qa_with_context"],
+            input_variables=["context", "question"]
+        )
         qa_chain = RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
             retriever=vectorstore.as_retriever(),
+            chain_type_kwargs={"prompt": qa_prompt},
             return_source_documents=True
         )
         
@@ -282,6 +322,28 @@ async def ask_question(request: QuestionRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Question processing error: {str(e)}"
+        )
+    
+@app.post("/analyze_document")
+async def analyze_document(file_id: str = Body(...)):
+    if file_id not in file_storage:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    try:
+        llm = GigaChatLangChain(credentials=GIGACHAT_CREDENTIALS)
+        document_text = file_storage[file_id][:5000]  # Берем первые 5000 символов
+        
+        prompt = PROMPT_TEMPLATES["document_analysis"].format(
+            document_text=document_text
+        )
+        
+        analysis = llm._call(prompt)
+        return {"analysis": analysis}
+    except Exception as e:
+        logger.error(f"Analysis error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Analysis error: {str(e)}"
         )
 
 @app.get("/health")
