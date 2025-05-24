@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Элементы интерфейса
     const uploadArea = document.getElementById('uploadArea');
     const uploadBtn = document.getElementById('uploadBtn');
     const fileInput = document.getElementById('fileInput');
@@ -8,26 +9,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const userInput = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
 
-    // Обработка загрузки файлов
+    // Текущий загруженный файл
+    let currentFileId = null;
+    let currentFileName = null;
+
+    // --- Обработчики событий ---
     uploadBtn.addEventListener('click', () => fileInput.click());
     
-    uploadArea.addEventListener('click', () => fileInput.click());
-    
+    // Drag and Drop
     uploadArea.addEventListener('dragover', (e) => {
         e.preventDefault();
-        uploadArea.style.borderColor = '#4361ee';
-        uploadArea.style.backgroundColor = 'rgba(67, 97, 238, 0.1)';
+        uploadArea.classList.add('dragover');
     });
     
     uploadArea.addEventListener('dragleave', () => {
-        uploadArea.style.borderColor = '#adb5bd';
-        uploadArea.style.backgroundColor = 'transparent';
+        uploadArea.classList.remove('dragover');
     });
     
     uploadArea.addEventListener('drop', (e) => {
         e.preventDefault();
-        uploadArea.style.borderColor = '#adb5bd';
-        uploadArea.style.backgroundColor = 'transparent';
+        uploadArea.classList.remove('dragover');
         
         if (e.dataTransfer.files.length) {
             fileInput.files = e.dataTransfer.files;
@@ -36,46 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     fileInput.addEventListener('change', handleFiles);
-    
-    function handleFiles() {
-        if (fileInput.files.length === 0) return;
-        
-        fileList.innerHTML = '';
-        
-        for (let i = 0; i < fileInput.files.length; i++) {
-            const file = fileInput.files[i];
-            const listItem = document.createElement('li');
-            listItem.className = 'file-item';
-            
-            listItem.innerHTML = `
-                <span class="file-name" title="${file.name}">${file.name}</span>
-                <div class="file-actions">
-                    <button class="btn-secondary" onclick="removeFile(this, ${i})">Удалить</button>
-                </div>
-            `;
-            
-            fileList.appendChild(listItem);
-        }
-        
-        fileListContainer.classList.remove('hidden');
-        
-        // Добавляем сообщение в чат о загрузке файлов
-        const message = document.createElement('div');
-        message.className = 'message user-message';
-        message.textContent = `Загружено ${fileInput.files.length} файл(ов) документации`;
-        chatMessages.appendChild(message);
-        
-        // Имитируем ответ ассистента
-        setTimeout(() => {
-            const response = document.createElement('div');
-            response.className = 'message assistant-message';
-            response.textContent = 'Отлично! Я проанализировал документацию. Теперь вы можете задавать вопросы или просить помочь с оптимизацией кода.';
-            chatMessages.appendChild(response);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }, 1000);
-    }
-    
-    // Обработка отправки сообщения
     sendBtn.addEventListener('click', sendMessage);
     
     userInput.addEventListener('keypress', (e) => {
@@ -84,58 +45,155 @@ document.addEventListener('DOMContentLoaded', function() {
             sendMessage();
         }
     });
-    
-    function sendMessage() {
+
+    // --- Основные функции ---
+
+    // Обработка загрузки файлов
+    async function handleFiles() {
+        if (!fileInput.files || fileInput.files.length === 0) return;
+        
+        // Проверяем формат файлов
+        const validFiles = Array.from(fileInput.files).filter(file => 
+            file.name.toLowerCase().endsWith('.txt')
+        );
+        
+        if (validFiles.length === 0) {
+            addMessage('Пожалуйста, загружайте только TXT-файлы!', 'assistant');
+            return;
+        }
+
+        // Берем первый файл (можно расширить для нескольких)
+        const file = validFiles[0];
+        
+        try {
+            // Показываем загрузку
+            const loadingMsg = addMessage(`Загружаю файл: ${file.name}...`, 'assistant');
+            
+            // Отправляем на сервер
+            const result = await uploadFile(file);
+            
+            // Обновляем состояние
+            currentFileId = result.file_id;
+            currentFileName = file.name;
+            
+            // Обновляем интерфейс
+            updateFileList(file);
+            loadingMsg.textContent = `Файл "${file.name}" успешно загружен. Задавайте вопросы!`;
+            
+        } catch (error) {
+            console.error('Ошибка загрузки:', error);
+            addMessage(`Ошибка при загрузке файла: ${error.message}`, 'assistant');
+        }
+    }
+
+    // Обновление списка файлов
+    function updateFileList(file) {
+        fileList.innerHTML = '';
+        
+        const listItem = document.createElement('li');
+        listItem.className = 'file-item';
+        listItem.innerHTML = `
+            <span class="file-name">${file.name}</span>
+            <button class="btn-secondary" onclick="removeCurrentFile()">Удалить</button>
+        `;
+        fileList.appendChild(listItem);
+        fileListContainer.classList.remove('hidden');
+    }
+
+    // Отправка сообщения
+    async function sendMessage() {
         const messageText = userInput.value.trim();
         if (!messageText) return;
         
+        // Проверяем загружен ли файл
+        if (!currentFileId) {
+            addMessage('Сначала загрузите файл с документацией!', 'assistant');
+            return;
+        }
+        
         // Добавляем сообщение пользователя
-        const userMessage = document.createElement('div');
-        userMessage.className = 'message user-message';
-        userMessage.textContent = messageText;
-        chatMessages.appendChild(userMessage);
-        
-        // Очищаем поле ввода
+        addMessage(messageText, 'user');
         userInput.value = '';
-        // Прокручиваем чат вниз
-        chatMessages.scrollTop = chatMessages.scrollHeight;
         
-        // Имитируем ответ ассистента
-        setTimeout(() => {
-            const response = document.createElement('div');
-            response.className = 'message assistant-message';
+        try {
+            // Индикатор загрузки
+            const loadingMsg = addMessage("Ассистент анализирует документ...", 'assistant');
             
-            // Простая имитация ответа в зависимости от вопроса
-            if (messageText.toLowerCase().includes('привет') || messageText.toLowerCase().includes('hello')) {
-                response.textContent = 'Привет! Как я могу помочь вам с документацией?';
-            } else if (messageText.toLowerCase().includes('оптимизировать') || messageText.toLowerCase().includes('улучшить')) {
-                response.textContent = 'На основе документации, я рекомендую следующие оптимизации: ...';
-            } else {
-                response.textContent = 'Согласно загруженной документации, ответ на ваш вопрос: ...';
-            }
+            // Отправляем запрос
+            const response = await askQuestion(messageText);
             
-            chatMessages.appendChild(response);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }, 1000);
+            // Заменяем индикатор на ответ
+            loadingMsg.textContent = response.answer;
+            
+        } catch (error) {
+            console.error('Ошибка запроса:', error);
+            addMessage(`Ошибка: ${error.message}`, 'assistant');
+        }
     }
-    
-    // Глобальная функция для удаления файлов
-    window.removeFile = function(button, index) {
-        const dt = new DataTransfer();
-        const files = fileInput.files;
+
+    // --- API функции ---
+
+    // Загрузка файла на сервер
+    async function uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
         
-        for (let i = 0; i < files.length; i++) {
-            if (i !== index) {
-                dt.items.add(files[i]);
-            }
+        const response = await fetch('http://localhost:8000/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Ошибка загрузки');
         }
         
-        fileInput.files = dt.files;
+        return await response.json();
+    }
+
+    // Запрос к ассистенту
+    async function askQuestion(question) {
+        const response = await fetch('http://localhost:8000/ask', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                file_id: currentFileId,
+                question: question
+            })
+        });
         
-        if (fileInput.files.length === 0) {
-            fileListContainer.classList.add('hidden');
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Ошибка сервера');
         }
         
-        handleFiles();
+        return await response.json();
+    }
+
+    // --- Вспомогательные функции ---
+
+    // Добавление сообщения в чат
+    function addMessage(text, sender) {
+        const message = document.createElement('div');
+        message.className = `message ${sender}-message`;
+        message.textContent = text;
+        chatMessages.appendChild(message);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return message;
+    }
+
+    // Глобальная функция для удаления файла
+    window.removeCurrentFile = function() {
+        if (!currentFileId) return;
+        
+        currentFileId = null;
+        currentFileName = null;
+        fileInput.value = '';
+        fileList.innerHTML = '';
+        fileListContainer.classList.add('hidden');
+        
+        addMessage('Файл документации удален', 'assistant');
     };
 });
