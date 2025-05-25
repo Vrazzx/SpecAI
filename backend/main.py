@@ -62,7 +62,7 @@ PROMPT_TEMPLATES = {
     При формировании ответа:
     1. Учитывай информацию из всех релевантных файлов
     2. Если информация противоречива - укажи это
-    3. Если ответа нет ни в одном файле - скажи "Не могу найти ответ в документах"
+    
     
     Развернутый ответ:
     """,
@@ -105,15 +105,13 @@ async def read_code_file(file: UploadFile) -> str:
         content = await file.read()
         code_content = content.decode("utf-8")
         
-        code_analysis = f"""
+        return f"""
         Файл кода: {file.filename}
         Тип: {os.path.splitext(file.filename)[1]} файл
         Размер: {len(code_content)} символов
-        Пример содержимого:
-        {code_content[:1000]}... [остальное содержимое опущено]
+        Полное содержимое:
+        {code_content}
         """
-        
-        return code_analysis
     except UnicodeDecodeError:
         raise HTTPException(
             status_code=400,
@@ -192,7 +190,7 @@ class GigaChatLangChain(LLM):
     verify_ssl_certs: bool = False
     scope: str = "GIGACHAT_API_PERS"
     timeout: int = 30
-    model:str = "GigaChat-Max"
+    model:str = "GigaChat-Pro"
     
     @property
     def _llm_type(self) -> str:
