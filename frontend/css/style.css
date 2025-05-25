@@ -1,0 +1,602 @@
+:root {
+    --primary-color: #009d17;
+    --secondary-color: #0a7308;
+    --background-color: #f8f9fa;
+    --text-color: #333;
+    --light-gray: #e9ecef;
+    --dark-gray: #adb5bd;
+    --card-bg: white;
+    --border-color: #e9ecef;
+    --assistant-message-bg: #e9ecef;
+    --assistant-message-text: #333;
+}
+
+
+[data-theme="dark"] {
+    --primary-color: #00c924;
+    --secondary-color: #04b91f;
+    --background-color: #121212;
+    --text-color: #e0e0e0;
+    --light-gray: #2d2d2d;
+    --dark-gray: #5a5a5a;
+    --card-bg: #1e1e1e;
+    --border-color: #333;
+    --assistant-message-bg: #2d2d2d;
+    --assistant-message-text: #e0e0e0;
+    --input-bg: #2d2d2d; 
+    --input-text: #e0e0e0;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+h1 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    color: var(--dark-gray);
+    font-size: 1.1rem;
+}
+
+.sub {
+    color: var(--dark-gray);
+    font-size: 1.1rem;
+}
+
+.main-content {
+    display: flex;
+    gap: 30px;
+}
+
+.documentation-section {
+    flex: 1;
+    background: var(--card-bg); /* Изменено с white на var(--card-bg) */
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+.documentation-section,
+.chat-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+/* Блоки кода */
+.code-block {
+    background: var(--code-bg);
+    border-radius: 8px;
+    margin: 12px 0;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.code-header {
+    background: var(--code-header-bg);
+    color: var(--code-header-text);
+    padding: 6px 12px;
+    font-size: 0.85em;
+    border-bottom: 1px solid var(--code-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.code-block pre {
+    white-space: pre-wrap; /* Сохраняем переносы строк */
+    word-break: keep-all; /* Не переносим слова */
+    tab-size: 4; /* Размер табуляции */
+    margin: 0;
+    padding: 12px;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    line-height: 1.5;
+}
+.code-block code {
+    display: block;
+    white-space: pre;
+    font-family: inherit;
+}
+/* Inline код */
+.inline-code {
+    background: var(--inline-code-bg);
+    color: var(--inline-code-text);
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+}
+
+/* Темная тема для кода */
+[data-theme="dark"] {
+    --code-bg: #1e1e1e;
+    --code-header-bg: #252526;
+    --code-header-text: #d4d4d4;
+    --code-border: #3e3e42;
+    --code-text: #d4d4d4;
+    --inline-code-bg: rgba(255, 255, 255, 0.15);
+    --inline-code-text: #f0f0f0;
+}
+
+[data-theme="light"] {
+    --code-bg: #f6f8fa;
+    --code-header-bg: #e5e7eb;
+    --code-header-text: #374151;
+    --code-border: #d1d5db;
+    --code-text: #24292e;
+    --inline-code-bg: rgba(27, 31, 35, 0.05);
+    --inline-code-text: #476582;
+}
+
+.upload-area {
+    border: 2px dashed var(--dark-gray);
+    background-color: var(--card-bg);
+}
+
+.chat-messages {
+    border: 1px solid var(--border-color);
+}
+
+.theme-toggle {
+    margin-top: 10px;
+    background-color: var(--secondary-color);
+}
+
+/* Добавим анимацию для плавного перехода */
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+.theme-toggle.dark-theme {
+    background-color: #333;
+}
+.chat-section {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    background: var(--card-bg); /* Изменено с white на var(--card-bg) */
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+
+.section-title {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    color: var(--secondary-color);
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.upload-area {
+    border: 2px dashed var(--dark-gray);
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+    border-color: var(--primary-color);
+    background-color: rgba(67, 97, 238, 0.05);
+}
+
+.upload-icon {
+    font-size: 48px;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.upload-text {
+    margin-bottom: 15px;
+}
+
+.btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+    background-color: var(--secondary-color);
+}
+
+.btn-secondary {
+    background-color: white;
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+}
+
+.btn-secondary:hover {
+    background-color: var(--light-gray);
+}
+
+.file-list {
+    list-style: none;
+}
+
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.file-item:last-child {
+    border-bottom: none;
+}
+
+.file-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 10px;
+}
+
+.file-actions {
+    display: flex;
+    gap: 5px;
+}
+.file-actions .delete-btn {
+    background-color: transparent;
+    border: none;
+    color: #ff4444;
+    cursor: pointer;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+}
+
+.file-actions .delete-btn:hover {
+    background-color: rgba(255, 68, 68, 0.1);
+    transform: scale(1.05);
+}
+
+.file-actions .delete-btn:active {
+    transform: scale(0.98);
+}
+
+.file-actions .delete-btn::before {
+    content: "❌";
+    font-size: 1rem;
+}
+
+/* Для темной темы */
+[data-theme="dark"] .file-actions .delete-btn {
+    color: #ff6666;
+}
+
+[data-theme="dark"] .file-actions .delete-btn:hover {
+    background-color: rgba(255, 68, 68, 0.2);
+}
+
+/* Блоки кода */
+.code-block {
+    background: var(--code-bg);
+    border-radius: 8px;
+    margin: 12px 0;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.code-header {
+    background: var(--code-header-bg);
+    color: var(--code-header-text);
+    padding: 6px 12px;
+    font-family: 'Consolas', monospace;
+    font-size: 0.85em;
+    border-bottom: 1px solid var(--code-border);
+    display: flex;
+    justify-content: space-between;
+}
+
+.code-block pre {
+    margin: 0;
+    padding: 12px;
+    overflow-x: auto;
+    background: var(--code-bg);
+    color: var(--code-text);
+    font-family: 'Consolas', 'Monaco', monospace;
+    line-height: 1.5;
+    tab-size: 4;
+}
+
+.code-block code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+/* Inline код */
+.inline-code {
+    background: var(--inline-code-bg);
+    color: var(--inline-code-text);
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+}
+
+/* Темная тема для кода */
+[data-theme="dark"] {
+    --code-bg: #1e1e1e;
+    --code-header-bg: #252526;
+    --code-header-text: #d4d4d4;
+    --code-border: #3e3e42;
+    --code-text: #d4d4d4;
+    --inline-code-bg: rgba(255, 255, 255, 0.15);
+    --inline-code-text: #f0f0f0;
+}
+
+[data-theme="light"] {
+    --code-bg: #f6f8fa;
+    --code-header-bg: #e5e7eb;
+    --code-header-text: #374151;
+    --code-border: #d1d5db;
+    --code-text: #24292e;
+    --inline-code-bg: rgba(27, 31, 35, 0.05);
+    --inline-code-text: #476582;
+}
+
+/* Дополнительные стили для сообщений */
+.message h1, .message h2, .message h3 {
+    margin: 15px 0 10px;
+    line-height: 1.3;
+}
+
+.message h1 {
+    font-size: 1.5em;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.message h2 {
+    font-size: 1.3em;
+}
+
+.message h3 {
+    font-size: 1.1em;
+}
+
+.message ul, .message ol {
+    padding-left: 25px;
+    margin: 10px 0;
+}
+
+.message li {
+    margin-bottom: 5px;
+}
+
+.message hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 15px 0;
+}
+
+.message a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.message a:hover {
+    text-decoration: underline;
+}
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    padding: 10px;
+    border: 1px solid var(--light-gray);
+    border-radius: 5px;
+    max-height: 500px;
+}
+/* Сохранение отступов в коде */
+.indent {
+    display: inline-block;
+}
+
+/* Темная и светлая темы для кода */
+[data-theme="dark"] {
+    --code-bg: #1e1e1e;
+    --code-header-bg: #252526;
+    --code-header-text: #d4d4d4;
+    --code-border: #3e3e42;
+}
+
+[data-theme="light"] {
+    --code-bg: #f6f8fa;
+    --code-header-bg: #e5e7eb;
+    --code-header-text: #374151;
+    --code-border: #d1d5db;
+}
+.message {
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    border-radius: 18px;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+/* Для обычного текста в сообщениях */
+.message p {
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+/* Добавьте эти стили в ваш CSS файл */
+.message strong {
+    font-weight: bold;
+}
+
+.message em {
+    font-style: italic;
+}
+
+.message code {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+.message pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+}
+.message pre code {
+    white-space: inherit; /* Наследует white-space от pre */
+    background: none;
+    padding: 0;
+}
+/* Для inline кода */
+/* Для inline кода (одиночные строки в тексте) */
+.message code:not(pre code) {
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap; /* Изменили с nowrap на pre-wrap */
+}
+.message blockquote {
+    border-left: 3px solid var(--primary-color);
+    padding-left: 12px;
+    margin: 10px 0;
+    color: var(--dark-gray);
+}
+
+.message ul, .message ol {
+    padding-left: 20px;
+    margin: 10px 0;
+}
+
+.message li {
+    margin-bottom: 5px;
+}
+
+/* Стили для темной темы */
+[data-theme="dark"] .message code {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .message pre {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .message blockquote {
+    color: var(--dark-gray);
+}
+/* Темная тема */
+[data-theme="dark"] .message pre,
+[data-theme="dark"] .message code:not(pre code) {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-message {
+    background-color: var(--primary-color);
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 5px;
+}
+
+.assistant-message {
+    background-color: var(--light-gray); 
+    color: var(--text-color); 
+    margin-right: auto;
+    border-bottom-left-radius: 5px;
+}
+.chat-input {
+    display: flex;
+    gap: 10px;
+}
+.copy-btn {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0 5px;
+    font-size: 0.9em;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+}
+.copy-btn:hover {
+    opacity: 1;
+}
+.code-line {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    white-space: pre;
+    margin: 0;
+    padding: 0;
+}
+.chat-input textarea {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid var(--light-gray);
+    border-radius: 5px;
+    resize: none;
+    min-height: 60px;
+    font-size: 1rem;
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+
+.chat-input button {
+    align-self: flex-end;
+    padding: 12px 20px;
+}
+
+.hidden {
+    display: none;
+}
+
+#fileInput {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+    }
+}
