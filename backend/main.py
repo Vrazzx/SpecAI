@@ -36,14 +36,33 @@ PROMPT_TEMPLATES = {
     Анализ:
     """,
     
+    "code_analysis": """
+    Ты - опытный разработчик. Проанализируй предоставленные файлы с кодом и определи их назначение.
+    Обрати внимание на:
+    1. Язык программирования
+    2. Основные функции/классы
+    3. Возможное назначение кода
+    4. Зависимости между файлами
+    
+    Файлы:
+    {code_files}
+    
+    Анализ:
+    """,
+    
     "qa_with_context": """
-    Ты - технический ассистент. Отвечай на вопросы, используя только предоставленный контекст.
-    Если ответа нет в контексте, скажи "Не могу найти ответ в документе". Отвечай на русском языке.
+    Ты - технический ассистент. Отвечай на вопросы, используя информацию из предоставленных документов.
+    В твоем распоряжении информация из {num_files} файлов. Отвечай на русском языке.
     
     Контекст:
     {context}
     
     Вопрос: {question}
+    
+    При формировании ответа:
+    1. Учитывай информацию из всех релевантных файлов
+    2. Если информация противоречива - укажи это
+    3. Если ответа нет ни в одном файле - скажи "Не могу найти ответ в документах"
     
     Развернутый ответ:
     """,
@@ -84,12 +103,23 @@ SUPPORTED_CODE_EXTENSIONS = {
 async def read_code_file(file: UploadFile) -> str:
     try:
         content = await file.read()
-        return content.decode("utf-8")
+        code_content = content.decode("utf-8")
+        
+        code_analysis = f"""
+        Файл кода: {file.filename}
+        Тип: {os.path.splitext(file.filename)[1]} файл
+        Размер: {len(code_content)} символов
+        Пример содержимого:
+        {code_content[:1000]}... [остальное содержимое опущено]
+        """
+        
+        return code_analysis
     except UnicodeDecodeError:
         raise HTTPException(
             status_code=400,
             detail=f"Could not decode file '{file.filename}' as UTF-8 text"
         )
+
 # Настройки CORS
 app.add_middleware(
     CORSMiddleware,
@@ -116,7 +146,7 @@ def process_uploaded_file(file: UploadFile):
             for i, page in enumerate(pdf_reader.pages):
                 page_text = page.extract_text() or ""
                 text += page_text
-                logger.info(f"PDF page {i+1}: {page_text[:100]}...")
+                logger.info(f"PDF page {i+1}: {page_text[:1000000]}...")
             return text
         
         elif file.filename.lower().endswith('.docx'):
@@ -184,7 +214,7 @@ class GigaChatLangChain(LLM):
                 verify_ssl_certs=self.verify_ssl_certs,
                 scope=self.scope,
                 timeout=self.timeout,
-                mode = self.model
+                model = self.model
             )
             response = client.chat(prompt)
             return response.choices[0].message.content
@@ -312,17 +342,8 @@ async def ask_question(request: QuestionRequest):
     if not file_storage:
         raise HTTPException(status_code=404, detail="No files uploaded")
     
+    logger.info(f"Пользователь задал вопрос: {request.question}")
     try:
-        # Объединяем все векторные индексы
-        all_vectorstores = list(vector_indices.values())
-        if not all_vectorstores:
-            raise HTTPException(status_code=400, detail="No processed files available")
-            
-        # Создаем общий ретривер из всех файлов
-        combined_retriever = all_vectorstores[0].as_retriever()
-        for vs in all_vectorstores[1:]:
-            combined_retriever.add_documents(vs.as_retriever().get_relevant_documents(""))
-        
         if not GIGACHAT_CREDENTIALS:
             raise HTTPException(
                 status_code=500,
@@ -331,27 +352,68 @@ async def ask_question(request: QuestionRequest):
             
         llm = GigaChatLangChain(credentials=GIGACHAT_CREDENTIALS)
         
+        # Собираем все тексты с указанием источника
+        documents = []
+        for file_id, text in file_storage.items():
+            text_splitter = CharacterTextSplitter(
+                separator="\n",
+                chunk_size=1000,
+                chunk_overlap=200,
+                length_function=len
+            )
+            chunks = text_splitter.split_text(text)
+            for chunk in chunks:
+                documents.append({
+                    "text": chunk,
+                    "metadata": {"file_id": file_id}
+                })
+        
+        # Создаем единый векторный индекс
+        embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
+        
+        texts = [doc["text"] for doc in documents]
+        metadatas = [doc["metadata"] for doc in documents]
+        
+        combined_vectorstore = FAISS.from_texts(
+            texts=texts,
+            embedding=embeddings,
+            metadatas=metadatas
+        )
+        
         qa_prompt = PromptTemplate(
             template=PROMPT_TEMPLATES["qa_with_context"],
-            input_variables=["context", "question"]
+            input_variables=["context", "question"],
+            partial_variables={"num_files": str(len(file_storage))}  
         )
         
         qa_chain = RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
-            retriever=combined_retriever,
-            chain_type_kwargs={"prompt": qa_prompt},
+            retriever=combined_vectorstore.as_retriever(search_kwargs={"k": 5}),
+            chain_type_kwargs={
+                "prompt": qa_prompt,
+                "document_variable_name": "context"
+            },
             return_source_documents=True
         )
         
         result = qa_chain.invoke({"query": request.question})
         
+        # Агрегируем источники по файлам
+        source_files = set()
+        for doc in result["source_documents"]:
+            if "file_id" in doc.metadata:
+                source_files.add(doc.metadata["file_id"])
+        
         return {
             "answer": result["result"],
+            "source_files": list(source_files),
             "sources": [doc.metadata for doc in result["source_documents"]]
         }
     except Exception as e:
-        logger.error(f"Question processing error: {str(e)}")
+        logger.error(f"Question processing error: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Question processing error: {str(e)}"
@@ -382,6 +444,34 @@ async def analyze_documents():
             status_code=500,
             detail=f"Analysis error: {str(e)}"
         )
+
+@app.post("/analyze_code")
+async def analyze_code_files():
+    """Специальный анализ файлов с кодом"""
+    code_files = {fid: text for fid, text in file_storage.items()
+                 if os.path.splitext(fid)[1].lower() in SUPPORTED_CODE_EXTENSIONS}
+    
+    if not code_files:
+        raise HTTPException(status_code=404, detail="No code files uploaded")
+    
+    try:
+        llm = GigaChatLangChain(credentials=GIGACHAT_CREDENTIALS)
+        
+        combined_code = "\n\n".join(
+            f"Файл: {fname}\nСодержимое:\n{content[:5000]}" 
+            for fname, content in code_files.items()
+        )
+        
+        prompt = PROMPT_TEMPLATES["code_analysis"].format(
+            code_files=combined_code
+        )
+        
+        analysis = llm._call(prompt)
+        return {"analysis": analysis}
+    
+    except Exception as e:
+        logger.error(f"Code analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 async def health_check():

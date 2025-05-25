@@ -65,6 +65,11 @@ h1 {
     font-size: 1.1rem;
 }
 
+.sub {
+    color: var(--dark-gray);
+    font-size: 1.1rem;
+}
+
 .main-content {
     display: flex;
     gap: 30px;
