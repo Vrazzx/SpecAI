@@ -85,7 +85,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
 
-
     // --- Функции загрузки и общения с бэкендом ---
 
   async function handleFiles() {
@@ -150,8 +149,9 @@ document.addEventListener('DOMContentLoaded', function () {
 async function sendMessage() {
     const messageText = userInput.value.trim();
     if (!messageText) return;
-    if (!currentFileId) {
-        addMessage('Сначала загрузите файл!', 'assistant');
+    
+    if (uploadedFiles.length === 0) {
+        addMessage('Сначала загрузите файлы!', 'assistant');
         return;
     }
 
@@ -161,7 +161,17 @@ async function sendMessage() {
     const loadingMsg = addMessage('Анализирую...', 'assistant');
 
     try {
-        const result = await askQuestion(messageText);
+        const response = await fetch('http://localhost:8000/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question: messageText })
+        });
+        
+        if (!response.ok) {
+            throw new Error(await response.text());
+        }
+        
+        const result = await response.json();
         chatMessages.removeChild(loadingMsg);
         addMessage(result.answer, 'assistant', true);
     } catch (err) {
@@ -216,10 +226,7 @@ function updateFileList(file, fileId) {
     
     fileItem.innerHTML = `
         <span class="file-name">${file.name}</span>
-        <div class="file-actions">
-            <button class="delete-btn" onclick="removeFile('${fileId}')" title="Удалить файл"></button>
-            <button class="select-btn" onclick="selectFile('${fileId}')" title="Выбрать файл">✅</button>
-        </div>
+        <button class="delete-btn" onclick="removeFile('${fileId}')" title="Удалить файл">🗑️</button>
     `;
     
     fileList.appendChild(fileItem);
@@ -273,43 +280,22 @@ window.selectFile = (fileId) => {
 // Замените window.removeFile на это:
 window.removeFile = async (fileId) => {
     try {
-        // Получаем имя файла перед удалением
         const fileName = getFileNameById(fileId);
-        
-        const response = await fetch(`http://localhost:8000/delete/${fileId}`, {
-            method: 'DELETE'
+        const response = await fetch(`http://localhost:8000/delete/${fileId}`, { 
+            method: 'DELETE' 
         });
         
-        if (!response.ok) {
-            throw new Error(await response.text());
-        }
+        if (!response.ok) throw new Error(await response.text());
         
-        // Удаляем файл из списка
         uploadedFiles = uploadedFiles.filter(f => f.id !== fileId);
+        document.querySelector(`.file-item[data-file-id="${fileId}"]`)?.remove();
+        addMessage(`Файл "${fileName}" удален.`, 'assistant');
         
-        // Удаляем элемент из DOM
-        const fileElement = document.querySelector(`.file-item[data-file-id="${fileId}"]`);
-        if (fileElement) {
-            fileElement.remove();
-        }
-        
-        // Сообщаем об удалении
-        addMessage(`Файл "${fileName}" был удален.`, 'assistant');
-        
-        // Если удаляли текущий выбранный файл - сбрасываем выбор
-        if (currentFileId === fileId) {
-            currentFileId = null;
-            addMessage('Текущий выбранный файл удален. Пожалуйста, выберите другой файл для вопросов.', 'assistant');
-        }
-        
-        // Если файлов не осталось - скрываем список
         if (uploadedFiles.length === 0) {
             fileListContainer.classList.add('hidden');
         }
-        
     } catch (err) {
-        addMessage(`Ошибка при удалении файла: ${err.message}`, 'assistant');
-        console.error('Delete error:', err);
+        addMessage(`Ошибка при удалении: ${err.message}`, 'assistant');
     }
 };
 

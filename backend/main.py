@@ -153,7 +153,6 @@ file_storage: Dict[str, str] = {}
 vector_indices: Dict[str, FAISS] = {}
 
 class QuestionRequest(BaseModel):
-    file_id: str
     question: str
 
 class GigaChatLangChain(LLM):
@@ -306,15 +305,23 @@ async def delete_file(file_id: str):
         logger.error(f"Error deleting file {file_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
-    
+
 @app.post("/ask")
 async def ask_question(request: QuestionRequest):
-    """Обработка вопросов с контекстом из файла"""
-    if request.file_id not in file_storage:
-        raise HTTPException(status_code=404, detail="File not found")
+    """Обработка вопросов с контекстом из всех файлов"""
+    if not file_storage:
+        raise HTTPException(status_code=404, detail="No files uploaded")
     
     try:
-        vectorstore = vector_indices[request.file_id]
+        # Объединяем все векторные индексы
+        all_vectorstores = list(vector_indices.values())
+        if not all_vectorstores:
+            raise HTTPException(status_code=400, detail="No processed files available")
+            
+        # Создаем общий ретривер из всех файлов
+        combined_retriever = all_vectorstores[0].as_retriever()
+        for vs in all_vectorstores[1:]:
+            combined_retriever.add_documents(vs.as_retriever().get_relevant_documents(""))
         
         if not GIGACHAT_CREDENTIALS:
             raise HTTPException(
@@ -328,10 +335,11 @@ async def ask_question(request: QuestionRequest):
             template=PROMPT_TEMPLATES["qa_with_context"],
             input_variables=["context", "question"]
         )
+        
         qa_chain = RetrievalQA.from_chain_type(
             llm=llm,
             chain_type="stuff",
-            retriever=vectorstore.as_retriever(),
+            retriever=combined_retriever,
             chain_type_kwargs={"prompt": qa_prompt},
             return_source_documents=True
         )
@@ -349,17 +357,21 @@ async def ask_question(request: QuestionRequest):
             detail=f"Question processing error: {str(e)}"
         )
     
-@app.post("/analyze_document")
-async def analyze_document(file_id: str = Body(...)):
-    if file_id not in file_storage:
-        raise HTTPException(status_code=404, detail="File not found")
+@app.post("/analyze_documents")
+async def analyze_documents():
+    """Анализ всех загруженных документов"""
+    if not file_storage:
+        raise HTTPException(status_code=404, detail="No files uploaded")
     
     try:
         llm = GigaChatLangChain(credentials=GIGACHAT_CREDENTIALS)
-        document_text = file_storage[file_id][:5000]  # Берем первые 5000 символов
+        combined_text = "\n\n".join([
+            f"Файл {file_id}:\n{text[:5000]}" 
+            for file_id, text in file_storage.items()
+        ])
         
         prompt = PROMPT_TEMPLATES["document_analysis"].format(
-            document_text=document_text
+            document_text=combined_text
         )
         
         analysis = llm._call(prompt)
