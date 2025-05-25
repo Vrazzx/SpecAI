@@ -282,6 +282,31 @@ async def upload_file(file: UploadFile = File(...)):
             detail=f"File upload error: {str(e)}"
         )
 
+
+@app.delete("/delete/{file_id}")
+async def delete_file(file_id: str):
+    """Полное удаление файла и его векторного индекса"""
+    logger.info(f"Attempting to delete file {file_id}")
+    
+    if file_id not in file_storage:
+        logger.warning(f"File {file_id} not found in storage")
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    try:
+        # Удаляем все следы файла
+        del file_storage[file_id]
+        logger.info(f"Deleted from file_storage: {file_id}")
+        
+        if file_id in vector_indices:
+            del vector_indices[file_id]
+            logger.info(f"Deleted from vector_indices: {file_id}")
+            
+        return {"status": "deleted"}
+    except Exception as e:
+        logger.error(f"Error deleting file {file_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    
 @app.post("/ask")
 async def ask_question(request: QuestionRequest):
     """Обработка вопросов с контекстом из файла"""
